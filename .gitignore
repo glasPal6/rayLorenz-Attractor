@@ -1,3 +1,7 @@
+# Self
+build/
+nob
+
 # Prerequisites
 *.d
 
