@@ -1,6 +1,7 @@
 # Self
 build/
 nob
+nob.old
 
 # Prerequisites
 *.d
