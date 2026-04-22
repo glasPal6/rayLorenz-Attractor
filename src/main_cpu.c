@@ -10,24 +10,27 @@ float GetRandomFloat(float from, float to) {
     return from + (to - from) * (float)GetRandomValue(0, INT32_MAX) / INT32_MAX;
 }
 
-void init_particles(uint32_t numParticles, Vector4* positions,
-                    Vector4* velocities) {
+void init_particles(uint32_t numParticles, Vector3* positions,
+                    Vector3* velocities, Color* colors) {
     for (uint32_t i = 0; i < numParticles; i++) {
-        positions[i] = (Vector4){
-            GetRandomFloat(-0.5, 0.5),
-            GetRandomFloat(-0.5, 0.5),
-            GetRandomFloat(-0.5, 0.5),
+        positions[i] = (Vector3){
+            GetRandomFloat(-50, 50),
+            GetRandomFloat(-50, 50),
+            GetRandomFloat(-50, 50),
+        };
+        velocities[i] = (Vector3){
+            0,
+            0,
             0,
         };
-        velocities[i] = (Vector4){
-            0,
-            0,
-            0,
-            0,
+        colors[i] = (Color){
+            (unsigned char)GetRandomValue(64, 255),
+            (unsigned char)GetRandomValue(64, 255),
+            (unsigned char)GetRandomValue(64, 255),
+            255,
         };
     }
 }
-void step_particles() {}
 
 int main() {
     const int screenWidth = 900;
@@ -43,15 +46,21 @@ int main() {
     SetTargetFPS(60);
 
     // Particles setup
-    uint32_t numParticles = 1024 * 10;
-    Vector4* positions = malloc(sizeof(Vector4) * numParticles);
-    Vector4* velocities = malloc(sizeof(Vector4) * numParticles);
+    uint32_t numParticles = 1024 * 1;
+    // uint32_t numParticles = 512;
+    Vector3* positions = malloc(sizeof(Vector3) * numParticles);
+    Vector3* velocities = malloc(sizeof(Vector3) * numParticles);
+    Color* colors = malloc(sizeof(Color) * numParticles);
 
-    init_particles(numParticles, positions, velocities);
+    init_particles(numParticles, positions, velocities, colors);
 
     // Camera setup
     Camera camera = {
-        {2, 2, 2}, {0, 0, 0}, {0, 1, 0}, 35.0, CAMERA_PERSPECTIVE,
+        {2, 2, 2},  // position
+        {0, 0, 1},  // target (Lorenz tends to live in +Z)
+        {0, 1, 0},
+        45.0f,  // fovy
+        CAMERA_PERSPECTIVE,
     };
 
     float time = 0;
@@ -59,17 +68,34 @@ int main() {
     float sigma = 10;
     float rho = 28;
     float beta = 8.0 / 3.0;
-    float particleScale = 1.0;
+    float particleScale = 0.5;
+    float positionScale = 0.05f;
     float instances_x1000 = 100.0;
 
     while (!WindowShouldClose()) {
         float deltaTime = GetFrameTime();
         uint32_t numInstances =
             (uint32_t)(instances_x1000 / 1000 * numParticles);
+        // UpdateCamera(&camera, CAMERA_FREE);
         UpdateCamera(&camera, CAMERA_ORBITAL);
 
         {
             // Compute Pass
+            if (time == 0) {
+                init_particles(numParticles, positions, velocities, colors);
+            }
+
+            for (uint32_t i = 0; i < numParticles; i++) {
+                velocities[i].x = sigma * (positions[i].y - positions[i].x);
+                velocities[i].y =
+                    positions[i].x * (rho - positions[i].z) - positions[i].y;
+                velocities[i].z =
+                    positions[i].x * positions[i].y - beta * positions[i].z;
+
+                positions[i].x += velocities[i].x * deltaTime * timeScale;
+                positions[i].y += velocities[i].y * deltaTime * timeScale;
+                positions[i].z += velocities[i].z * deltaTime * timeScale;
+            }
         }
 
         BeginDrawing();
@@ -77,6 +103,15 @@ int main() {
 
         {
             // Render Pass
+            BeginMode3D(camera);
+            for (uint32_t i = 0; i < numParticles; i++) {
+                Vector3 p = positions[i];
+                p.x *= positionScale;
+                p.y *= positionScale;
+                p.z *= positionScale;
+                DrawSphere(p, 0.02f * particleScale, colors[i]);
+            }
+            EndMode3D();
         }
 
         {
