@@ -1,5 +1,7 @@
 # rayLorenz-Attractor
 
+![Demo](demo.gif)
+
 ## Overview
 
 Minimal C project to explore shaders, focusing on the Lorenz Attractor as a live particle system.
